@@ -1,16 +1,12 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TodoController;
 use App\Http\Controllers\UserController;
 
 Route::get('/', function () {
     return view('welcome');
 });
-
-// Resource untuk Todo, otomatis membuat semua route kecuali 'show'
-// Route::resource('todo', TodoController::class)->except(['show']);
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -21,13 +17,11 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    //Route todo
     Route::get('/todo', [TodoController::class, 'index'])->name('todo.index');
     Route::post('/todo', [TodoController::class, 'store'])->name('todo.store');         
     Route::get('/todo/create', [TodoController::class, 'create'])->name('todo.create'); 
     Route::get('/todo/edit', [TodoController::class, 'edit'])->name('todo.edit');
 
-    // Route user
     Route::get('/user', [UserController::class, 'index'])->name('user.index');
 });
 
