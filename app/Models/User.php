@@ -53,4 +53,10 @@ class User extends Authenticatable
     {
         return$this->hasMany(Todo::class);
     }
+
+     // Tambahkan ini di bawah method todos()
+     public function is_admin()
+     {
+         return $this->is_admin; // Kolom 'is_admin' harus ada di database
+     }
 }
