@@ -2,94 +2,108 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-
 use App\Models\Category;
-use App\Http\Requests\CategoryRequest;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CategoryController extends Controller
 {
-    use AuthorizesRequests;
     /**
-     * Display a listing of the categories.
+     * Display a listing of the resource.
      */
-    public function index(): View
+    public function index()
     {
-        $categories = Category::where('user_id', auth()->user()->id)->get();
-        $todoCount = [];
-        
-        foreach ($categories as $category) {
-            $todoCount[$category->id] = $category->todos->count();
-        }
-        
-        return view('category.index', compact('categories', 'todoCount'));
+        // Eager load todos to avoid N+1 problem
+        $categories = Category::with('todos')
+            ->where('user_id', Auth::id())
+            ->get();
+
+        return view('category.index', compact('categories'));
     }
 
     /**
-     * Show the form for creating a new category.
+     * Show the form for creating a new resource.
      */
-    public function create(): View
+    public function create()
     {
         return view('category.create');
     }
 
     /**
-     * Store a newly created category in storage.
+     * Store a newly created resource in storage.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
+        $request->validate([
+            'title' => 'required|max:255',
         ]);
 
-        $request->user()->categories()->create($validated);
+        Category::create([
+            'user_id' => Auth::id(),
+            'title'   => $request->title,
+        ]);
 
-        return redirect(route('category.index'))->with('success', 'Category created successfully!');
-    }
-
-    public function edit(Category $category): View
-    {
-        if (auth()->user()->id !== $category->user_id) {
-            abort(403, 'Unauthorized action.');
-        }
-        
-        return view('category.edit', compact('category'));
+        return redirect()->route('category.index')
+            ->with('success', 'Category created successfully!');
     }
 
     /**
-     * Update the specified category in storage.
+     * Display the specified resource.
      */
-    public function update(Request $request, Category $category): RedirectResponse
+    public function show(Category $category)
     {
-        // Match the authorization approach used in edit
-        if (auth()->user()->id !== $category->user_id) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-        ]);
-
-        $category->update($validated);
-
-        return redirect(route('category.index'))->with('success', 'Category updated successfully!');
+        // Optional: return abort if not used
+        return abort(404);
     }
 
     /**
-     * Remove the specified category from storage.
+     * Show the form for editing the specified resource.
      */
-    public function destroy(Category $category): RedirectResponse
+    public function edit(Category $category)
     {
-        // Match the authorization approach used in edit
-        if (auth()->user()->id !== $category->user_id) {
-            abort(403, 'Unauthorized action.');
+        if (Auth::id() === $category->user_id) {
+            return view('category.edit', compact('category'));
         }
-        
-        $category->delete();
 
-        return redirect(route('category.index'))->with('success', 'Category deleted successfully!');
+        return redirect()->route('category.index')
+            ->with('danger', 'You are not authorized to edit this category!');
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Category $category)
+    {
+        if (Auth::id() !== $category->user_id) {
+            return redirect()->route('category.index')
+                ->with('danger', 'You are not authorized to update this category!');
+        }
+
+        $request->validate([
+            'title' => 'required|max:255',
+        ]);
+
+        $category->update([
+            'title' => ucfirst($request->title),
+        ]);
+
+        return redirect()->route('category.index')
+            ->with('success', 'Todo category updated successfully!');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Category $category)
+    {
+        if (Auth::id() === $category->user_id) {
+            $category->delete();
+
+            return redirect()->route('category.index')
+                ->with('success', 'Category deleted successfully!');
+        }
+
+        return redirect()->route('category.index')
+            ->with('danger', 'You are not authorized to delete this category!');
     }
 }

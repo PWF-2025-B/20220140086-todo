@@ -2,31 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    // Tampilkan daftar pengguna dengan pencarian dan pagination
     public function index()
     {
         $search = request('search');
 
-        if ($search) {
-            $users = User::where(function ($query) use ($search) {
-                $query->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('email', 'like', '%' . $search . '%');
+        $users = User::with('todos')
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', '%' . $search . '%')
+                             ->orWhere('email', 'like', '%' . $search . '%');
+                });
             })
-                ->orderBy('name')
-                ->where('id', '!=', '1')
-                ->paginate(20)
-                ->withQueryString();
-        } else {
-            $users = User::where('id', '!=', '1')
-                ->orderBy('name')
-                ->paginate(10);
-        }
+            ->where('id', '!=', 1)
+            ->orderBy('name')
+            ->paginate(10);
+
         return view('user.index', compact('users'));
     }
 
+    // Jadikan user sebagai admin
     public function makeadmin(User $user)
     {
         $user->timestamps = false;
@@ -36,6 +36,7 @@ class UserController extends Controller
         return back()->with('success', 'Make admin successfully!');
     }
 
+    // Hapus hak admin dari user (selain ID 1)
     public function removeadmin(User $user)
     {
         if ($user->id != 1) {
@@ -44,20 +45,26 @@ class UserController extends Controller
             $user->save();
 
             return back()->with('success', 'Remove admin successfully!');
-        } else {
-            return redirect()->route('user.index');
         }
+
+        return redirect()->route('user.index');
     }
 
+    // Tampilkan detail user berdasarkan ID
+    public function show($id)
+    {
+        $user = User::findOrFail($id);
+        return view('user.show', compact('user'));
+    }
+
+    // Hapus user (selain ID 1)
     public function destroy(User $user)
     {
         if ($user->id != 1) {
             $user->delete();
             return back()->with('success', 'Delete user successfully!');
-        } else {
-            return redirect()->route('user.index')->with('danger', 'Delete user failed!');
         }
+
+        return redirect()->route('user.index')->with('danger', 'Delete user failed!');
     }
-
-
 }
